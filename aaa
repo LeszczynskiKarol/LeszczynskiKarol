@@ -1,0 +1,1231 @@
+<?php
+/**
+ * Kadence functions and definitions
+ *
+ * This file must be parseable by PHP 5.2.
+ *
+ * @link https://developer.wordpress.org/themes/basics/theme-functions/
+ *
+ * @package kadence
+ */
+
+define( 'KADENCE_VERSION', '1.1.51' );
+define( 'KADENCE_MINIMUM_WP_VERSION', '5.4' );
+define( 'KADENCE_MINIMUM_PHP_VERSION', '7.2' );
+
+// Bail if requirements are not met.
+if ( version_compare( $GLOBALS['wp_version'], KADENCE_MINIMUM_WP_VERSION, '<' ) || version_compare( phpversion(), KADENCE_MINIMUM_PHP_VERSION, '<' ) ) {
+	require get_template_directory() . '/inc/back-compat.php';
+	return;
+}
+// Include WordPress shims.
+require get_template_directory() . '/inc/wordpress-shims.php';
+
+// Load the `kadence()` entry point function.
+require get_template_directory() . '/inc/class-theme.php';
+
+// Load the `kadence()` entry point function.
+require get_template_directory() . '/inc/functions.php';
+
+// Initialize the theme.
+call_user_func( 'Kadence\kadence' );
+
+
+function add_custom_order_history_endpoint($items) {
+    $items['custom_order_history'] = __('Historia zamówień', 'kadence');
+    return $items;
+}
+add_filter('woocommerce_account_menu_items', 'add_custom_order_history_endpoint');
+
+// Dodaj przekierowanie dla nowej sekcji (aby uniknąć błędu 404)
+function custom_order_history_rewrite_rule() {
+    add_rewrite_endpoint('custom_order_history', EP_ROOT | EP_PAGES);
+    flush_rewrite_rules(false); // Tymczasowe rozwiązanie dla celów deweloperskich
+}
+add_action('init', 'custom_order_history_rewrite_rule');
+
+function custom_order_history_query_vars($vars) {
+    $vars[] = 'custom_order_history';
+    return $vars;
+}
+add_filter('query_vars', 'custom_order_history_query_vars', 0);
+
+// Handler do wyświetlania zawartości sekcji "Historia Zamówień"
+function custom_order_history_content_handler() {
+    add_action('woocommerce_account_custom_order_history_endpoint', 'custom_order_history_content');
+}
+add_action('after_setup_theme', 'custom_order_history_content_handler');
+
+
+add_action('woocommerce_account_dashboard', 'custom_dashboard_content_on_main_account_page');
+
+function custom_dashboard_content_on_main_account_page() {
+    global $wp;
+    $is_main_dashboard_page = empty(array_filter(array_keys($wp->query_vars), function($var) {
+        return in_array($var, ['orders', 'edit-account', 'edit-address', 'payment-methods', 'lost-password', 'customer-logout', 'add-payment-method']);
+    }));
+
+    if (function_exists('is_account_page') && is_account_page() && $is_main_dashboard_page) {
+        echo '<div class="grid-container">';
+        $user_id = get_current_user_id();
+        $subscription_id = rcp_get_subscription_id($user_id);
+
+        if ($subscription_id) {
+            switch ($subscription_id) {
+                case 1: 
+					echo '<div class="custom-box">';
+					echo '<p style="display: block; font-size: 18px; color: #ffffff; text-align: center; background-color: #1CC1E5; font-weight: bold; padding: 10px 20px; margin-bottom: 15px;">Smart Basic</p>';
+					echo '<p class="custom-subscription-box">Smart Basic</p>';
+					echo '<ul class="custom-subscription-content">';
+					echo '<li><i class="fas fa-check-circle"></i><b>3,59 zł</b>: Twoja cena za 1000 zzs.  </li>';
+					echo '<li><i class="fas fa-thumbs-up"></i>Dzięki subskrypcji Smart Basic oszczędzasz na generowaniu treści 👍</li>';
+					echo '<li><i class="fas fa-arrow-up"></i>Przejdź na korzystniejszy plan i&nbsp;uzyskaj jeszcze niższe ceny! 🤑</li>';
+					echo '</ul>';
+					echo '</div>';
+
+                    break;
+                case 2: 
+                    echo '<div class="custom-box">';
+                    echo '<h2>Informacje dla subskrypcji Silver</h2>';
+                    echo '</div>';
+                    break;
+                case 3: 
+                    echo '<div class="custom-box">';
+                    echo '<h2>Informacje dla subskrypcji Gold</h2>';
+                    echo '</div>';
+                    break;
+                default:
+                    echo '<div class="custom-box">';
+                    echo '<h2>Informacje dla innej subskrypcji</h2>';
+                    echo '</div>';
+                    break;
+            }
+        } else {
+            echo '<div class="custom-box">Informacje dla użytkowników bez subskrypcji</div>';
+        }
+
+        echo '<div class="stats">';
+        echo '<h2>Twoje statystyki</h2>';
+        display_user_statistics_in_dashboard();
+        echo '</div>';
+
+        echo '<div class="activity-summary">';
+        echo '<h2>Twoje ostatnie zamówienia</h2>';
+        display_last_order_summary();
+        echo '</div>';
+
+        echo '<div class="user-info">';
+        echo '<h2>Informacje o Twoim koncie</h2>';
+        $current_user = wp_get_current_user();
+        $user_id = $current_user->ID;
+        echo '<ul>';
+        echo '<li><i class="fa fa-user" style="color: #44d9f9;"></i> ' . $current_user->first_name . ' ' . $current_user->last_name . '</li>';
+        echo '<li><i class="fa fa-envelope" style="color: #44d9f9;"></i> ' . $current_user->user_email . '</li>';
+        $company_name = get_user_meta($user_id, 'billing_company', true);
+        $vat_number = get_user_meta($user_id, 'billing_phone', true);
+        echo '<li><i class="fa fa-building" style="color: #44d9f9;"></i> ' . $company_name . '</li>';
+        echo '<li><i class="fa fa-info-circle" style="color: #44d9f9;"></i> NIP: ' . $vat_number . '</li>';
+        echo '</ul>';
+        echo '</div>';
+
+        echo '<div class="help-section">';
+        echo '<h2>Pomoc</h2>';
+        echo '<p>Tutaj umieść swój tekst pomocy, który jest stały.</p>';
+        echo '</div>';
+
+        echo '<div class="invoices-summary">';
+        echo '<h2>Twoje ostatnie faktury</h2>';
+        display_last_invoice_summary();
+        echo '</div>';
+
+        echo '</div>'; // Zakończenie diva .grid-container
+    }
+}
+
+
+
+function custom_order_history_content() {
+
+    $user_id = get_current_user_id();
+    // Załóżmy, że używasz niestandardowego typu postu dla zamówień lub postów użytkownika. Zmień 'post' na swój typ postu, jeśli to konieczne.
+    $args = array(
+        'author' => $user_id,
+        'post_type' => 'post', // Zmień na odpowiedni typ postu, np. 'zamowienia' lub inny typ postu zamówień
+        'posts_per_page' => -1, // Dostosuj, jeśli chcesz ograniczyć liczbę wyświetlanych postów
+        'orderby' => 'date',
+        'order' => 'DESC'
+    );
+
+    $query = new WP_Query($args);
+
+        echo '<table style="width:100%; table-layout: fixed;">';
+        echo '<thead>';
+        echo '<tr><th width="5%">' . __('Nr', 'text-domain') . '</th><th width="15%">' . __('Data', 'text-domain') . '</th><th width="20%">' . __('Temat', 'text-domain') . '</th><th width="20%">' . __('Rodzaj treści', 'text-domain') . '</th><th width="15%">' . __('Liczba znaków', 'text-domain') . '</th><th width="15%">' . __('Cena', 'text-domain') . '</th><th width="10%">' . __('PDF', 'text-domain') . '</th></tr>';
+        echo '</thead>';
+        echo '<tbody>';
+
+        while ($query->have_posts()) {
+            $query->the_post();
+            $post_id = get_the_ID();
+            $pdf_url = get_post_meta($post_id, 'post_pdf_url', true);
+            $rodzaj_tresci = get_post_meta($post_id, 'Rodzaj treści', true);
+            $liczba_znakow = get_post_meta($post_id, 'Liczba znaków', true);
+            $cena = get_post_meta($post_id, 'Cena', true);
+
+            echo '<tr>';
+            echo '<td>' . esc_html($post_id) . '</td>';
+            echo '<td>' . get_the_date('Y-m-d') . '</td>';
+            echo '<td>' . get_the_title() . '</td>';
+            echo '<td>' . esc_html($rodzaj_tresci) . '</td>';
+            echo '<td>' . esc_html($liczba_znakow) . '</td>';
+            echo '<td>' . esc_html($cena) . '</td>';
+            echo '<td>' . (!empty($pdf_url) ? '<a href="' . esc_url($pdf_url) . '" target="_blank">' . __('Pobierz PDF', 'text-domain') . '</a>' : __('Brak PDF', 'text-domain')) . '</td>';
+            echo '</tr>';
+        }
+        wp_reset_postdata();
+    } 
+
+
+
+
+function kadence_load_font_awesome() {
+    wp_enqueue_style( 'font-awesome', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css' );
+}
+add_action( 'wp_enqueue_scripts', 'kadence_load_font_awesome' );
+
+
+function check_user_access_shortcode($atts, $content = null) {
+    $atts = shortcode_atts(array(
+        'user_id' => '0',
+    ), $atts);
+
+    $current_user_id = get_current_user_id();
+
+    if ($current_user_id == $atts['user_id']) {
+        return do_shortcode($content);
+    }
+
+    return ''; // Nie wyświetlaj nic, jeśli użytkownik nie ma dostępu
+}
+add_shortcode('user_access', 'check_user_access_shortcode');
+function sprawdz_dostep_do_strony() {
+    if (is_singular('page')) { // Sprawdź, czy jesteśmy na stronie
+        global $post;
+        $przypisany_uzytkownik_id = get_post_meta($post->ID, 'przypisany_uzytkownik_id', true);
+
+        // Sprawdź, czy zalogowany użytkownik jest tym samym, który jest przypisany do strony
+        if (!empty($przypisany_uzytkownik_id)) {
+            $current_user_id = get_current_user_id();
+
+            if (!is_user_logged_in() || ($current_user_id != $przypisany_uzytkownik_id)) {
+                wp_redirect(home_url());
+                exit;
+            }
+        }
+    }
+}
+add_action('template_redirect', 'sprawdz_dostep_do_strony');
+
+function restrict_post_to_author() {
+    if (is_single()) { // Sprawdza, czy jesteśmy na stronie pojedynczego posta
+        global $post;
+        $current_user_id = get_current_user_id();
+
+        // Sprawdza, czy zalogowany użytkownik jest autorem posta
+        if ($post->post_author != $current_user_id) {
+            wp_redirect(home_url());
+            exit;
+        }
+    }
+}
+add_action('template_redirect', 'restrict_post_to_author');
+
+function yoast_seo_noindex_nofollow_for_clients() {
+    if (is_user_logged_in() && !current_user_can('administrator')) {
+        // Dodaj filtry Yoast SEO do ustawienia tagów robots na noindex i nofollow
+        add_filter('wpseo_robots', function() { return 'noindex, nofollow'; });
+        
+        // Opcjonalnie, jeśli chcesz ustawić noindex dla całej strony (w tym dla linków kanonicznych itp.)
+        add_filter('wpseo_canonical', '__return_false');
+    }
+}
+function custom_user_greeting_shortcode() {
+    $current_user = wp_get_current_user();
+    if ($current_user->user_firstname) {
+        $greeting = '' . $current_user->user_firstname;
+    } else {
+        // Jeśli imię nie jest dostępne, użyj nazwy użytkownika
+        $greeting = '' . $current_user->display_name;
+    }
+    return $greeting;
+}
+add_shortcode('user_greeting', 'custom_user_greeting_shortcode');
+
+function customize_account_edit_form_and_optional_last_name() {
+    // Dodaj dodatkowe pola do formularza edycji konta
+    add_action('woocommerce_edit_account_form', function() {
+        $user_id = get_current_user_id();
+        $billing_first_name = get_user_meta($user_id, 'billing_first_name', true);
+        $billing_last_name = get_user_meta($user_id, 'billing_last_name', true);
+        $billing_company = get_user_meta($user_id, 'billing_company', true);
+        $billing_address_1 = get_user_meta($user_id, 'billing_address_1', true);
+        $billing_phone = get_user_meta($user_id, 'billing_phone', true); // NIP
+        $billing_postcode = get_user_meta($user_id, 'billing_postcode', true);
+        $billing_city = get_user_meta($user_id, 'billing_city', true);
+        ?>
+        <fieldset>
+            <legend><?php _e('Dane do faktury', 'woocommerce'); ?></legend>
+            <p class="form-row form-row-thirds">
+                <label for="billing_first_name"><?php _e('Imię', 'woocommerce'); ?></label>
+                <input type="text" class="input-text" name="billing_first_name" id="billing_first_name" value="<?php echo esc_attr($billing_first_name); ?>">
+            </p>
+            <p class="form-row form-row-thirds">
+                <label for="billing_last_name"><?php _e('Nazwisko', 'woocommerce'); ?></label>
+                <input type="text" class="input-text" name="billing_last_name" id="billing_last_name" value="<?php echo esc_attr($billing_last_name); ?>">
+            </p>
+            <p class="form-row form-row-thirds">
+                <label for="billing_company"><?php _e('Nazwa firmy/Twoje imię i nazwisko', 'woocommerce'); ?></label>
+                <input type="text" class="input-text" name="billing_company" id="billing_company" value="<?php echo esc_attr($billing_company); ?>">
+            </p>
+
+            <p class="form-row form-row-thirds">
+                <label for="billing_postcode"><?php _e('Kod pocztowy', 'woocommerce'); ?></label>
+                <input type="text" class="input-text" name="billing_postcode" id="billing_postcode" value="<?php echo esc_attr($billing_postcode); ?>">
+            </p>
+            <p class="form-row form-row-thirds">
+                <label for="billing_city"><?php _e('Miejscowość', 'woocommerce'); ?></label>
+                <input type="text" class="input-text" name="billing_city" id="billing_city" value="<?php echo esc_attr($billing_city); ?>">
+            </p>
+			            <p class="form-row form-row-thirds">
+                <label for="billing_address_1"><?php _e('Ulica i nr lokalu/domu', 'woocommerce'); ?></label>
+                <input type="text" class="input-text" name="billing_address_1" id="billing_address_1" value="<?php echo esc_attr($billing_address_1); ?>">
+            </p>
+            <p class="form-row form-row-thirds">
+                <label for="billing_phone"><?php _e('NIP', 'woocommerce'); ?></label>
+                <input type="text" class="input-text" name="billing_phone" id="billing_phone" value="<?php echo esc_attr($billing_phone); ?>">
+            </p>
+        </fieldset>
+        <?php
+    });
+
+    // Zapisz dodatkowe pola przy aktualizacji konta użytkownika
+    add_action('woocommerce_save_account_details', function($user_id) {
+        if (isset($_POST['billing_first_name'])) update_user_meta($user_id, 'billing_first_name', sanitize_text_field($_POST['billing_first_name']));
+        if (isset($_POST['billing_last_name'])) update_user_meta($user_id, 'billing_last_name', sanitize_text_field($_POST['billing_last_name']));
+        if (isset($_POST['billing_company'])) update_user_meta($user_id, 'billing_company', sanitize_text_field($_POST['billing_company']));
+        if (isset($_POST['billing_address_1'])) update_user_meta($user_id, 'billing_address_1', sanitize_text_field($_POST['billing_address_1']));
+        if (isset($_POST['billing_phone'])) update_user_meta($user_id, 'billing_phone', sanitize_text_field($_POST['billing_phone']));
+        if (isset($_POST['billing_postcode'])) update_user_meta($user_id, 'billing_postcode', sanitize_text_field($_POST['billing_postcode']));
+        if (isset($_POST['billing_city'])) update_user_meta($user_id, 'billing_city', sanitize_text_field($_POST['billing_city']));
+    });
+}
+add_action('init', 'customize_account_edit_form_and_optional_last_name');
+
+
+
+
+
+
+function display_last_order_summary() {
+    $user_id = get_current_user_id();
+    $args = array(
+        'author' => $user_id,
+        'post_type' => 'post', // Upewnij się, że to właściwy typ postów
+        'posts_per_page' => 3, // Pobiera wszystkie posty
+        'orderby' => 'date',
+        'order' => 'DESC'
+    );
+
+    $orders = new WP_Query($args);
+
+    if ($orders->have_posts()) {
+        echo '<table style="width:100%;">';
+        echo '<tr><th>Data</th><th>Temat</th><th>Długość</th><th>Cena</th></tr>';
+
+        while ($orders->have_posts()) {
+            $orders->the_post();
+            $post_id = get_the_ID();
+            $temat = get_the_title($post_id);
+            $dlugosc = get_post_meta($post_id, 'liczba_znakow', true);
+            $cena = get_post_meta($post_id, 'cena', true);
+            $link_do_postu = get_permalink($post_id);
+
+            echo '<tr>';
+            echo '<td>' . get_the_date('Y-m-d H:i:s') . '</td>';
+            // Temat jako link
+            echo '<td>' . esc_html($temat) . '</td>';
+            echo '<td>' . esc_html($dlugosc) . '</td>';
+            echo '<td>' . wc_price($cena) . '</td>';
+            echo '</tr>';
+        }
+
+        echo '</table>';
+        wp_reset_postdata();
+    } else {
+        echo '<p>' . __('Nie masz jeszcze żadnych zamówień.', 'text-domain') . '</p>';
+    }
+}
+
+function display_user_statistics_in_dashboard() {
+    if (function_exists('is_account_page') && is_account_page() && !is_wc_endpoint_url()) {
+        $user_id = get_current_user_id();
+
+        // Query for all posts by the user
+        $args_all_posts = [
+            'author' => $user_id,
+            'post_type' => 'post',
+            'posts_per_page' => -1,
+        ];
+        $query_all_posts = new WP_Query($args_all_posts);
+        $total_posts = $query_all_posts->found_posts;
+
+        // Query for posts published yesterday
+        $yesterday = new DateTime('yesterday');
+        $args_yesterday_posts = [
+            'author' => $user_id,
+            'post_type' => 'post',
+            'posts_per_page' => -1,
+            'date_query' => [
+                [
+                    'year' => $yesterday->format('Y'),
+                    'month' => $yesterday->format('m'),
+                    'day' => $yesterday->format('d'),
+                ],
+            ],
+        ];
+        $query_yesterday_posts = new WP_Query($args_yesterday_posts);
+        $yesterday_posts_count = $query_yesterday_posts->found_posts;
+
+        $total_characters = 0;
+        $total_value = 0;
+        $last_post_date = null;
+
+        while ($query_all_posts->have_posts()) {
+            $query_all_posts->the_post();
+            $characters = get_post_meta(get_the_ID(), 'Liczba znaków', true);
+            $total_characters += intval($characters);
+            $price = get_post_meta(get_the_ID(), 'Cena', true);
+            $total_value += floatval($price);
+            if (is_null($last_post_date) || strtotime(get_the_date('Y-m-d')) > strtotime($last_post_date)) {
+                $last_post_date = get_the_date('Y-m-d');
+            }
+        }
+        wp_reset_postdata();
+
+        $user_info = get_userdata($user_id);
+        $registration_date = date('Y-m-d', strtotime($user_info->user_registered));
+        $today = new DateTime();
+        $last_post_datetime = is_null($last_post_date) ? null : new DateTime($last_post_date);
+        $days_since_last_post = $last_post_datetime ? $today->diff($last_post_datetime)->days : null;
+
+        $message_2_to_5_days = "Od Twojego ostatniego tekstu na Smart Copy minęły <b>{$days_since_last_post}</b> dni. Najwyższy czas na kolejny! ✍️";
+        $message_5_to_14_days = "Minęło już <b>{$days_since_last_post}</b> dni od Twojej ostatniej aktywności 🤔 na Smart Copy. Jeśli potrzebujesz treści, wybierz moduł i wygeneruj w 2 min 🙂";
+        $message_above_14_days = "Nie widać Cię już <b>{$days_since_last_post}</b> dni 😟. Pewnie masz sporo na głowie, ale pamiętaj, że Smart Copy czeka na Ciebie 24 godziny na dobę 🤗";
+
+        $last_post_message = "";
+        if ($yesterday_posts_count > 0) {
+            $yesterday_text = plural_form($yesterday_posts_count);
+            $last_post_message .= "<b>{$yesterday_posts_count} {$yesterday_text}</b> – to Twój wczorajszy bilans. Dzisiaj będzie więcej? 🤗";
+        }
+        if (is_null($last_post_date)) {
+            $last_post_message = "Nie masz jeszcze żadnych tekstów. Wybierz moduł i <b>wygeneruj pierwsze treści</b> już teraz! ✍";
+        } elseif ($today_posts_count > 0) {
+            $last_post_message = "Masz już <b>{$today_posts_count}</b> tekst(ów) dzisiaj na koncie. Dobra robota! Kontynuujmy tę passę! 🚀";
+        } elseif ($days_since_last_post >= 2 && $days_since_last_post <= 5) {
+            $last_post_message = $message_2_to_5_days;
+        } elseif ($days_since_last_post > 5 && $days_since_last_post <= 14) {
+            $last_post_message = $message_5_to_14_days;
+        } elseif ($days_since_last_post > 14) {
+            $last_post_message = $message_above_14_days;
+        }
+        echo '<div class="user-stats">';
+        if (!empty($last_post_message)) {
+            echo "<p>$last_post_message</p>";
+        }
+        echo '</div>';
+
+        // Wyświetlanie komunikatu i statystyk
+        echo '<div class="stats" style="font-family: Arial, sans-serif;">';
+        echo '<ul style="list-style: none;">'; // Usunięcie bullet points
+        echo '<li><i class="fas fa-clock" style="color: #44d9f9;"></i> ' . $last_post_message . '</li>';
+		echo '<li><i class="fas fa-calendar-alt" style="color: #44d9f9;"></i> Jesteś na Smart Copy od: ' . $registration_date . '</li>';
+        echo '<li><i class="fas fa-file-alt" style="color: #44d9f9;"></i> Liczba dotychczas wygenerowanych tekstów: ' . $total_posts . '</li>';
+        echo '<li><i class="fas fa-text-width" style="color: #44d9f9;"></i> Łączna liczba znaków: ' . $total_characters . '</li>';
+        echo '<li><i class="fas fa-money-bill-wave" style="color: #44d9f9;"></i> Wartość wszystkich Twoich zamówień: ' . wc_price($total_value) . '</li>';
+        echo '</ul>';
+        echo '</div>';
+    }
+}
+
+
+
+function handle_incoming_invoices(WP_REST_Request $request) {
+    $data = $request->get_json_params();
+    $invoice_data = isset($data['meta']) ? $data['meta'] : [];
+
+    // Tworzenie lub aktualizacja postu faktury
+    $post_id = wp_insert_post([
+        'post_type' => 'invoice',
+        'post_title' => sanitize_text_field($data['title']),
+        'post_status' => 'publish',
+        'author' => isset($data['author']) ? intval($data['author']) : get_current_user_id(),
+        'meta_input' => [
+            'number_of_texts' => isset($invoice_data['number_of_texts']) ? sanitize_text_field($invoice_data['number_of_texts']) : '',
+            'number_of_characters' => isset($invoice_data['number_of_characters']) ? sanitize_text_field($invoice_data['number_of_characters']) : '',
+            'payform' => isset($invoice_data['payform']) ? sanitize_text_field($invoice_data['payform']) : '',
+            'price' => isset($invoice_data['price']) ? sanitize_text_field($invoice_data['price']) : '', // Dodanie obsługi 'price'
+        ],
+    ]);
+
+    if (is_wp_error($post_id)) {
+        return new WP_Error('invoice_creation_failed', 'Nie udało się utworzyć faktury.', ['status' => 500]);
+    }
+
+    return new WP_REST_Response(['message' => 'Faktura została pomyślnie utworzona.', 'post_id' => $post_id], 200);
+}
+
+
+
+
+
+
+
+
+
+function smart_copy_create_invoices_table() {
+    require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+    global $wpdb;
+    $charset_collate = $wpdb->get_charset_collate();
+    $table_name = $wpdb->prefix . 'smart_copy_invoices';
+    
+    $sql = "CREATE TABLE $table_name (
+        id mediumint(9) NOT NULL AUTO_INCREMENT,
+        user_id mediumint(9) NOT NULL,
+        invoice_data longtext NOT NULL,
+        created_at datetime DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        PRIMARY KEY  (id)
+    ) $charset_collate;";
+    
+    dbDelta($sql);
+}
+
+// Uruchamiamy funkcję przy aktywacji wtyczki/motywu
+register_activation_hook(__FILE__, 'smart_copy_create_invoices_table');
+
+function smart_copy_add_faktury_endpoint() {
+    add_rewrite_endpoint('faktury', EP_PAGES);
+}
+
+add_action('init', 'smart_copy_add_faktury_endpoint');
+
+function smart_copy_faktury_query_vars($vars) {
+    $vars[] = 'faktury';
+    return $vars;
+}
+
+add_filter('query_vars', 'smart_copy_faktury_query_vars');
+
+function smart_copy_display_user_invoices() {
+    $user_id = get_current_user_id();
+
+    $args = [
+        'post_type' => 'invoice',
+        'posts_per_page' => -1,
+        'orderby' => 'date',
+        'order' => 'DESC',
+        'author' => $user_id,
+    ];
+
+    $query = new WP_Query($args);
+
+    
+    echo '<table style="width:100%; table-layout: fixed;">';
+    echo '<thead>';
+    echo '<tr><th width="5%">' . __('Nr', 'text-domain') . '</th><th width="15%">' . __('Data', 'text-domain') . '</th><th width="20%">' . __('Forma rozliczenia', 'text-domain') . '</th><th width="20%">' . __('Liczba tekstów', 'text-domain') . '</th><th width="15%">' . __('Liczba znaków', 'text-domain') . '</th><th width="15%">' . __('Cena', 'text-domain') . '</th><th width="10%">' . __('PDF', 'text-domain') . '</th></tr>';
+    echo '</thead>';
+    echo '<tbody>';
+
+    if ($query->have_posts()) {
+        while ($query->have_posts()) {
+            $query->the_post();
+            $post_id = get_the_ID();
+            $pdf_url = get_post_meta($post_id, 'post_pdf_url', true);
+            $number_of_texts = get_post_meta($post_id, 'number_of_texts', true);
+            $number_of_characters = get_post_meta($post_id, 'number_of_characters', true);
+            $payform = get_post_meta($post_id, 'payform', true);
+            $price = get_post_meta($post_id, 'price', true); // Pobieranie ceny
+
+            echo '<tr>';
+            echo '<td>' . esc_html($post_id) . '</td>';
+            echo '<td>' . get_the_date('Y-m-d') . '</td>';
+            echo '<td>' . esc_html($payform) . '</td>';
+            echo '<td>' . esc_html($number_of_texts) . '</td>';
+            echo '<td>' . esc_html($number_of_characters) . '</td>';
+            echo '<td>' . esc_html($price) . ' zł</td>'; // Wyświetlanie ceny
+            echo '<td>' . (!empty($pdf_url) ? '<a href="/download.php?type=invoices&file=' . basename($pdf_url) . '" target="_blank">' . __('Pobierz PDF', 'text-domain') . '</a>' : __('Brak PDF', 'text-domain')) . '</td>';
+            echo '</tr>';
+        }
+        wp_reset_postdata();
+    } else {
+        echo '<tr><td colspan="7">Nie znaleziono faktur.</td></tr>';
+    }
+
+    echo '</tbody></table>';
+}
+
+
+
+
+// Upewnij się, że ta funkcja jest odpowiednio podłączona do endpointu faktur
+add_action('woocommerce_account_faktury_endpoint', 'smart_copy_display_user_invoices');
+
+
+
+function smart_copy_faktury_content() {
+    add_action('woocommerce_account_faktury_endpoint', 'smart_copy_display_user_invoices');
+}
+add_action('after_setup_theme', 'smart_copy_faktury_content');
+
+
+
+
+
+// // Rozwiązanie problemu z przesuwaniem layoutu
+function fix_layout_shift() {
+    if (function_exists('is_account_page') && is_account_page()) {
+        wp_add_inline_style('woocommerce-layout', "
+            html, body {
+                overflow-x: hidden; /* Zapobiega przewijaniu poziomemu */
+            }
+        ");
+    }
+}
+add_action('wp_enqueue_scripts', 'fix_layout_shift');
+
+
+
+function smart_copy_add_subscriptions_endpoint() {
+    add_rewrite_endpoint('subscriptions', EP_ROOT | EP_PAGES);
+}
+add_action('init', 'smart_copy_add_subscriptions_endpoint');
+
+
+function smart_copy_display_subscriptions_content() {
+    add_action('woocommerce_account_subscriptions_endpoint', 'subscriptions_content');
+}
+add_action('after_setup_theme', 'smart_copy_display_subscriptions_content');
+
+function subscriptions_content() {
+    $user_id = get_current_user_id();
+    $subscriptions = rcp_get_memberships(['user_id' => $user_id]);
+
+    
+    if (!empty($subscriptions)) {
+        echo '<table style="width:100%;">';
+        echo '<thead>';
+        echo '<tr><th>ID</th><th>Data wykupienia</th><th>Nazwa subskrypcji</th><th>Data wygaśnięcia</th><th>Gwarantowana cena</th></tr>';
+        echo '</thead>';
+        echo '<tbody>';
+        foreach ($subscriptions as $subscription) {
+            echo '<tr>';
+            echo '<td>' . esc_html($subscription->get_id()) . '</td>';
+            echo '<td>' . esc_html(date('Y-m-d', strtotime($subscription->get_created_date()))) . '</td>';
+            echo '<td>' . esc_html($subscription->get_name()) . '</td>';
+            echo '<td>' . esc_html(date('Y-m-d', strtotime($subscription->get_expiration_date()))) . '</td>';
+            echo '<td>' . wc_price($subscription->get_recurring_amount()) . '</td>';
+            echo '</tr>';
+        }
+        echo '</tbody>';
+        echo '</table>';
+    } else {
+        echo '<p>Nie posiadasz żadnych subskrypcji.</p>';
+    }
+}
+
+function smart_copy_add_subscriptions_link_my_account($items) {
+    $items['subscriptions'] = 'Subskrypcje';
+    return $items;
+}
+add_filter('woocommerce_account_menu_items', 'smart_copy_add_subscriptions_link_my_account');
+
+
+function register_invoice_post_type() {
+    $args = [
+        'public' => true,
+        'label'  => 'Faktury',
+        'supports' => ['title', 'editor', 'custom-fields', 'author'],
+        'show_in_rest' => true, // Dodaj tę linię
+    ];
+    register_post_type('invoice', $args);
+}
+add_action('init', 'register_invoice_post_type');
+
+
+require_once '/home/virt102760/domains/smart-copy.ai/public_html/vendor/autoload.php';
+
+use Dompdf\Dompdf;
+
+
+
+function add_invoice_meta_boxes() {
+    add_meta_box('invoice_details', 'Szczegóły Faktury', 'invoice_meta_box_callback', 'invoice', 'normal', 'high');
+}
+add_action('add_meta_boxes', 'add_invoice_meta_boxes');
+
+function invoice_meta_box_callback($post) {
+    // Użyj nonce dla weryfikacji
+    wp_nonce_field(plugin_basename(__FILE__), 'invoice_noncename');
+
+    // Pola dla danych faktury
+    $fields = [
+        'Nazwa firmy' => 'invoice_company_name',
+        'Kod pocztowy' => 'invoice_postal_code',
+        'Miejscowość' => 'invoice_city',
+        'Ulica i numer lokalu' => 'invoice_address',
+        'NIP' => 'invoice_nip'
+    ];
+
+    foreach ($fields as $label => $id) {
+        $value = get_post_meta($post->ID, $id, true);
+        echo '<label for="' . $id . '">' . $label . '</label>';
+        echo '<input type="text" id="' . $id . '" name="' . $id . '" value="' . esc_attr($value) . '" size="25" />';
+    }
+}
+
+function save_invoice_meta_box($post_id) {
+    // Sprawdź, czy nonce jest ustawiony
+    if (!isset($_POST['invoice_noncename']) || !wp_verify_nonce($_POST['invoice_noncename'], plugin_basename(__FILE__))) {
+        return;
+    }
+
+    // Jeśli to autozapis, nie robimy nic
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
+
+    // Sprawdzamy uprawnienia użytkownika
+    if ('invoice' == $_POST['post_type'] && current_user_can('edit_post', $post_id)) {
+        $fields = [
+            'invoice_company_name',
+            'invoice_postal_code',
+            'invoice_city',
+            'invoice_address',
+            'invoice_nip'
+        ];
+
+        foreach ($fields as $field) {
+            if (isset($_POST[$field])) {
+                update_post_meta($post_id, $field, $_POST[$field]);
+            }
+        }
+    } else {
+        return;
+    }
+}
+add_action('save_post', 'save_invoice_meta_box');
+
+
+
+function generate_and_save_post_pdf($post_id) {
+    if (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE) return;
+    if (wp_is_post_revision($post_id)) return;
+
+    // Określamy ścieżkę i URL dla zapisu PDF
+    $pdf_storage_path = '/home/virt102760/domains/smart-copy.ai/public_html/pdf/';
+    $pdf_public_url_base = 'https://smart-copy.ai/pdf/'; // Tutaj należy podać właściwy URL
+
+    $post = get_post($post_id);
+    $content = apply_filters('the_content', $post->post_content);
+
+    $dompdf = new Dompdf();
+    $dompdf->loadHtml($content);
+    $dompdf->setPaper('A4', 'portrait');
+    $dompdf->render();
+
+    // Tworzymy nazwę pliku PDF
+    $pdf_file_name = 'post-' . $post_id . '.pdf';
+    $pdf_path = $pdf_storage_path . $pdf_file_name;
+
+    // Zapisujemy wygenerowany PDF do pliku
+    file_put_contents($pdf_path, $dompdf->output());
+
+    // Budujemy publiczny URL do PDF
+    $pdf_url = $pdf_public_url_base . $pdf_file_name;
+
+    // Aktualizujemy metadane posta o URL do PDF
+    update_post_meta($post_id, 'post_pdf_url', $pdf_url);
+}
+
+// Dodajemy hook do generowania PDF po zapisie posta
+add_action('save_post', 'generate_and_save_post_pdf');
+
+function register_invoice_meta_for_rest() {
+    $meta_args = array(
+        'show_in_rest' => true,
+        'single' => true,
+        'type' => 'string', // Możesz zmienić typ zgodnie z potrzebami
+    );
+
+    register_post_meta('invoice', 'date_of_issue', $meta_args);
+	register_post_meta('invoice', 'price', $meta_args);
+    register_post_meta('invoice', 'number_of_texts', $meta_args);
+    register_post_meta('invoice', 'number_of_characters', $meta_args);
+}
+
+add_action('init', 'register_invoice_meta_for_rest');
+
+
+
+function generate_and_save_invoice_pdf($post_id) {
+    if ('invoice' !== get_post_type($post_id)) return; // Uruchamiaj tylko dla typu postu 'invoice'
+
+    $dompdf = new Dompdf();
+    $content = apply_filters('the_content', get_post_field('post_content', $post_id));
+    $dompdf->loadHtml($content);
+    $dompdf->setPaper('A4', 'portrait');
+    $dompdf->render();
+
+    // Nowa ścieżka zapisu dla faktur
+    $pdf_storage_path = '/home/virt102760/domains/smart-copy.ai/public_html/pdf/invoices/';
+    $pdf_file_name = 'Faktura-nr-' . $post_id . '.pdf';
+    $pdf_path = $pdf_storage_path . $pdf_file_name;
+
+    file_put_contents($pdf_path, $dompdf->output());
+    $pdf_public_url_base = 'https://smart-copy.ai/pdf/invoices/';
+    $pdf_url = $pdf_public_url_base . $pdf_file_name;
+
+    update_post_meta($post_id, 'post_pdf_url', $pdf_url);
+}
+
+function generate_and_save_order_pdf($post_id) {
+    if ('post' !== get_post_type($post_id)) return; // Uruchamiaj tylko dla standardowych postów
+
+    $dompdf = new Dompdf();
+    $content = apply_filters('the_content', get_post_field('post_content', $post_id));
+    $dompdf->loadHtml($content);
+    $dompdf->setPaper('A4', 'portrait');
+    $dompdf->render();
+
+    // Nowa ścieżka zapisu dla zamówień
+    $pdf_storage_path = '/home/virt102760/domains/smart-copy.ai/public_html/pdf/orders/';
+    $pdf_file_name = 'order-' . $post_id . '.pdf';
+    $pdf_path = $pdf_storage_path . $pdf_file_name;
+
+    file_put_contents($pdf_path, $dompdf->output());
+    $pdf_public_url_base = 'https://smart-copy.ai/pdf/orders/';
+    $pdf_url = $pdf_public_url_base . $pdf_file_name;
+
+    update_post_meta($post_id, 'post_pdf_url', $pdf_url);
+}
+
+// Zaktualizuj hook 'save_post' do generowania PDF dla faktur i zamówień
+add_action('save_post', 'generate_and_save_invoice_pdf');
+add_action('save_post', 'generate_and_save_order_pdf');
+
+
+function custom_woocommerce_login_form_shortcode() {
+    if (is_user_logged_in()) {
+        wp_redirect(wc_get_page_permalink('myaccount'));
+        exit;
+    } else {
+        ob_start();
+        woocommerce_login_form();
+        return ob_get_clean();
+    }
+}
+add_shortcode('custom_wc_login_form', 'custom_woocommerce_login_form_shortcode');
+
+function custom_woocommerce_registration_form_start() {
+    echo '<H3>Zarejestruj się za darmo i uzsykaj dodatkowe korzyści</h3><br>';
+}
+add_action('woocommerce_register_form_start', 'custom_woocommerce_registration_form_start');
+
+function custom_redirect_to_custom_registration() {
+        $registration_page_id = 3639;
+
+    if (is_account_page() && !is_user_logged_in() && !is_page($registration_page_id)) {
+        wp_redirect(home_url('/registration/'));
+        exit;
+    }
+}
+
+
+function custom_woocommerce_registration_form_shortcode() {
+    if (is_user_logged_in()) {
+        wp_redirect(home_url('/moje-konto/'));
+        exit;
+    } else {
+        if ('yes' === get_option('woocommerce_enable_myaccount_registration')) {
+            ob_start();
+            ?>
+
+            <form method="post" class="custom-woocommerce-form-register register" <?php do_action('woocommerce_register_form_tag'); ?> >
+
+                <?php do_action('woocommerce_register_form_start'); ?>
+
+                <p class="woocommerce-form-row woocommerce-form-row--wide form-row form-row-wide">
+                    <label for="reg_username"><?php _e('Imię (używane jako nazwa użytkownika)', 'woocommerce'); ?>&nbsp;<span class="required">*</span></label>
+                    <input type="text" class="woocommerce-Input woocommerce-Input--text input-text" name="username" id="reg_username" value="<?php echo (!empty($_POST['username'])) ? esc_attr(wp_unslash($_POST['username'])) : ''; ?>" required>
+                </p>
+
+                <p class="woocommerce-form-row woocommerce-form-row--wide form-row form-row-wide">
+                    <label for="reg_email"><?php _e('Adres email', 'woocommerce'); ?>&nbsp;<span class="required">*</span></label>
+                    <input type="email" class="woocommerce-Input woocommerce-Input--text input-text" name="email" id="reg_email" value="<?php echo (!empty($_POST['email'])) ? esc_attr(wp_unslash($_POST['email'])) : ''; ?>" required>
+                </p>
+
+                <!-- Dodanie pola hasła do formularza rejestracji -->
+                <p class="woocommerce-form-row woocommerce-form-row--wide form-row form-row-wide">
+                    <label for="reg_password"><?php _e('Hasło', 'woocommerce'); ?>&nbsp;<span class="required">*</span></label>
+                    <input type="password" class="woocommerce-Input woocommerce-Input--text input-text" name="password" id="reg_password" autocomplete="new-password" required>
+                </p>
+
+                <!-- Dodanie pola do potwierdzenia hasła -->
+                <p class="woocommerce-form-row woocommerce-form-row--wide form-row form-row-wide">
+                    <label for="reg_password2"><?php _e('Potwierdź hasło', 'woocommerce'); ?>&nbsp;<span class="required">*</span></label>
+                    <input type="password" class="woocommerce-Input woocommerce-Input--text input-text" name="password2" id="reg_password2" autocomplete="new-password" required>
+                </p>
+
+                <?php do_action('woocommerce_register_form'); ?>
+
+                <p class="woocommerce-FormRow form-row">
+                    <?php wp_nonce_field('woocommerce-register', 'woocommerce-register-nonce'); ?>
+                    <button type="submit" class="woocommerce-Button button" name="register" value="<?php esc_attr_e('Register', 'woocommerce'); ?>"><?php _e('Zarejestruj się', 'woocommerce'); ?></button>
+                </p>
+                <?php do_action('woocommerce_register_form_end'); ?>
+
+				
+				<span class="company-info-label">Podaj dane firmy do faktury</span>
+
+<a href="#" id="toggle-company-info"><i class="fas fa-chevron-down"></i></a>	    <div id="company-info" style="display:none;">
+                <!-- Tutaj dodajemy pola specyficzne dla danych fakturacji -->
+                <p class="woocommerce-form-row woocommerce-form-row--wide form-row form-row-wide">
+                    <label for="reg_billing_company"><?php _e('Nazwa firmy', 'woocommerce'); ?></label>
+                    <input type="text" class="woocommerce-Input woocommerce-Input--text input-text" name="billing_company" id="reg_billing_company" value="<?php echo (!empty($_POST['billing_company'])) ? esc_attr(wp_unslash($_POST['billing_company'])) : ''; ?>">
+                </p>
+                <p class="woocommerce-form-row woocommerce-form-row--wide form-row form-row-wide">
+                    <label for="reg_billing_company"><?php _e('Nazwa firmy', 'woocommerce'); ?></label>
+                    <input type="text" class="woocommerce-Input woocommerce-Input--text input-text" name="billing_company" id="reg_billing_company" value="<?php if (!empty($_POST['billing_company'])) echo esc_attr(wp_unslash($_POST['billing_company'])); ?>">
+                </p>
+
+                <p class="woocommerce-form-row woocommerce-form-row--wide form-row form-row-wide">
+                    <label for="reg_billing_phone"><?php _e('NIP', 'woocommerce'); ?></label>
+                    <input type="text" class="woocommerce-Input woocommerce-Input--text input-text" name="billing_phone" id="reg_billing_phone" value="<?php if (!empty($_POST['billing_phone'])) echo esc_attr(wp_unslash($_POST['billing_phone'])); ?>">
+                </p>
+
+                <p class="woocommerce-form-row woocommerce-form-row--wide form-row form-row-wide">
+                    <label for="reg_billing_postcode"><?php _e('Kod pocztowy', 'woocommerce'); ?></label>
+                    <input type="text" class="woocommerce-Input woocommerce-Input--text input-text" name="billing_postcode" id="reg_billing_postcode" value="<?php if (!empty($_POST['billing_postcode'])) echo esc_attr(wp_unslash($_POST['billing_postcode'])); ?>">
+                </p>
+
+                <p class="woocommerce-form-row woocommerce-form-row--wide form-row form-row-wide">
+                    <label for="reg_billing_city"><?php _e('Miejscowość', 'woocommerce'); ?></label>
+                    <input type="text" class="woocommerce-Input woocommerce-Input--text input-text" name="billing_city" id="reg_billing_city" value="<?php if (!empty($_POST['billing_city'])) echo esc_attr(wp_unslash($_POST['billing_city'])); ?>">
+                </p>
+
+                <p class="woocommerce-form-row woocommerce-form-row--wide form-row form-row-wide">
+                    <label for="reg_billing_address_1"><?php _e('Ulica', 'woocommerce'); ?></label>
+                    <input type="text" class="woocommerce-Input woocommerce-Input--text input-text" name="billing_address_1" id="reg_billing_address_1" value="<?php if (!empty($_POST['billing_address_1'])) echo esc_attr(wp_unslash($_POST['billing_address_1'])); ?>">
+                </p>
+
+    </div>
+
+            </form>
+            <script>
+                document.addEventListener('DOMContentLoaded', function () {
+                    const form = document.querySelector('.custom-woocommerce-form-register');
+                    form.addEventListener('submit', function (e) {
+                        const password = document.getElementById('reg_password').value;
+                        const confirmPassword = document.getElementById('reg_password2').value;
+                        if (password !== confirmPassword) {
+                            e.preventDefault(); // Zatrzymaj przesłanie formularza
+                            alert('Hasła nie są identyczne. Proszę wprowadzić ponownie hasło.');
+                        }
+                    });
+                });
+            </script>
+
+            <?php
+			            add_action('woocommerce_registered_customer', 'custom_handle_user_registration', 10, 1);
+            return ob_get_clean();
+        }
+    }
+}
+add_shortcode('custom_wc_registration_form', 'custom_woocommerce_registration_form_shortcode');
+
+
+// Dodaj pole z tokenem aktywacyjnym do użytkownika podczas rejestracji
+function custom_woocommerce_add_registration_token($user_id) {
+    if (isset($_POST['password']) && isset($_POST['password2'])) {
+        // Sprawdź, czy hasła się zgadzają
+        if ($_POST['password'] !== $_POST['password2']) {
+            // Usuń utworzonego użytkownika, ponieważ hasła się nie zgadzają
+            require_once(ABSPATH.'wp-admin/includes/user.php');
+            wp_delete_user($user_id);
+
+            // Dodaj błąd, który zostanie wyświetlony użytkownikowi
+            wc_add_notice(__('Błąd: Hasła nie są identyczne. Proszę spróbować ponownie.', 'woocommerce'), 'error');
+
+            // Przekieruj z powrotem na stronę rejestracji
+            wp_redirect(get_permalink(woocommerce_get_page_id('myaccount')) . '?action=register');
+            exit;
+        }
+    }
+
+    $user = get_userdata($user_id);
+    $token = md5(uniqid($user->user_login, true)); // Generuj unikalny token
+    add_user_meta($user_id, 'account_activation_token', $token); // Zapisz token w metadanych użytkownika
+
+    // Przygotuj i wyślij e-mail weryfikacyjny
+    $activation_link = add_query_arg(array('key' => $token, 'user' => $user_id), get_permalink(get_option('woocommerce_myaccount_page_id')) . '?action=activate');
+    $to = $user->user_email;
+    $subject = 'Aktywuj swoje konto';
+    $body = 'Kliknij ten link, aby aktywować swoje konto: ' . $activation_link;
+    wp_mail($to, $subject, $body);
+}
+add_action('woocommerce_created_customer', function($customer_id) {
+    // Ustawienie sesji/transjentu z flagą
+    set_transient('custom_registration_attempted', true, 60*5); // Przechowuj przez 5 minut
+    
+    $user = get_userdata($customer_id);
+    $token = md5(uniqid($user->user_login, true)); // Generuj unikalny token
+    add_user_meta($customer_id, 'account_activation_token', $token); // Zapisz token w metadanych użytkownika
+
+    // Przygotuj i wyślij e-mail weryfikacyjny
+    $activation_link = add_query_arg(array('key' => $token, 'user' => $customer_id), get_permalink(get_option('woocommerce_myaccount_page_id')) . '?action=activate');
+    $to = $user->user_email;
+    $subject = 'Aktywuj swoje konto';
+    $body = 'Kliknij ten link, aby aktywować swoje konto: ' . $activation_link;
+    wp_mail($to, $subject, $body);
+
+    // Dodaj niestandardowy komunikat dla użytkownika
+    wc_add_notice(__('Odbierz wiadomość e-mail i potwierdź rejestrację konta', 'woocommerce'), 'success');
+}, 10, 1);
+
+
+
+
+
+
+
+add_filter('woocommerce_registration_redirect', 'custom_registration_redirect_prevent', 10, 1);
+function custom_registration_redirect_prevent($redirect) {
+    // Usuń domyślne przekierowanie po rejestracji
+    if (isset($_POST['register']) && wp_verify_nonce($_POST['woocommerce-register-nonce'], 'woocommerce-register')) {
+        // Dodaj niestandardowy komunikat po próbie rejestracji
+        wc_add_notice(__('Sprawdź swoją skrzynkę e-mail, aby aktywować konto.', 'woocommerce'), 'success');
+        
+        // Zwróć oryginalny URL, aby zatrzymać użytkownika na bieżącej stronie
+        return wc_get_page_permalink('myaccount') . '?action=register';
+    }
+    return $redirect;
+}
+
+
+// Dostosowanie funkcji aktywacji konta
+function custom_woocommerce_activate_account() {
+    if (is_page() && isset($_GET['action']) && $_GET['action'] === 'activate' && !empty($_GET['key']) && !empty($_GET['user'])) {
+        $user_id = intval($_GET['user']);
+        $token = get_user_meta($user_id, 'account_activation_token', true);
+
+        if ($_GET['key'] === $token) {
+            delete_user_meta($user_id, 'account_activation_token'); // Usuń token
+
+            // Automatyczne logowanie użytkownika po aktywacji
+            wp_set_current_user($user_id);
+            wp_set_auth_cookie($user_id);
+
+            // Dodaj komunikat o pomyślnej aktywacji
+            wc_add_notice(__('Twoje konto zostało pomyślnie aktywowane. Witamy!', 'woocommerce'), 'success');
+
+            // Przekieruj na stronę 'Moje konto'
+            wp_redirect(wc_get_page_permalink('myaccount'));
+            exit;
+        } else {
+            wc_add_notice(__('Błąd aktywacji konta. Link aktywacyjny może być nieprawidłowy lub wygasł.', 'woocommerce'), 'error');
+            wp_redirect(wc_get_page_permalink('myaccount'));
+            exit;
+        }
+    }
+}
+add_action('template_redirect', 'custom_woocommerce_activate_account');
+
+// Wyświetlenie komunikatu o pomyślnej aktywacji konta
+function custom_woocommerce_activation_message() {
+    if (is_page(get_option('woocommerce_myaccount_page_id')) && isset($_GET['activated']) && $_GET['activated'] == '1') {
+        wc_add_notice(__('Twoje konto zostało pomyślnie aktywowane. Możesz teraz korzystać ze swojego konta.', 'woocommerce'), 'success');
+    }
+}
+add_action('wp', 'custom_woocommerce_activation_message');
+
+
+
+function switch_menu_by_login_status($args) {
+    // Określ lokalizację menu, którą chcesz modyfikować
+    $theme_location = 'primary'; // Możesz zmienić na właściwą lokalizację menu
+
+    if ($args['theme_location'] === $theme_location) {
+        if (is_user_logged_in()) {
+            // Zdefiniuj ID Twojego menu dla zalogowanych użytkowników
+            $logged_in_menu = wp_get_nav_menu_object('login')->term_id; // Zastąp 'Logged In Menu Name' nazwą Twojego menu
+            if ($logged_in_menu) {
+                $args['menu'] = $logged_in_menu;
+            }
+        } else {
+            // Zdefiniuj ID Twojego menu dla niezalogowanych użytkowników
+            $logged_out_menu = wp_get_nav_menu_object('logout')->term_id; // Zastąp 'Logged Out Menu Name' nazwą Twojego menu
+            if ($logged_out_menu) {
+                $args['menu'] = $logged_out_menu;
+            }
+        }
+    }
+
+    return $args;
+}
+add_filter('wp_nav_menu_args', 'switch_menu_by_login_status');
+
+function custom_redirect_logged_in_users() {
+    // Sprawdza, czy użytkownik jest zalogowany
+    if (is_user_logged_in()) {
+        // Pobiera aktualny URL
+        $current_url = home_url(add_query_arg(array(), $wp->request));
+        // Określa URL, na który mają zostać przekierowani zalogowani użytkownicy
+        $account_page_url = wc_get_page_permalink('myaccount');
+
+        // Sprawdza, czy aktualny URL zawiera '/login/' lub '/registration/'
+        if (strpos($current_url, '/login/') !== false || strpos($current_url, '/registration/') !== false) {
+            // Przekierowuje zalogowanych użytkowników na stronę '/moje-konto/'
+            wp_redirect($account_page_url);
+            exit;
+        }
+    }
+}
+add_action('template_redirect', 'custom_redirect_logged_in_users');
+
+function custom_redirect_logged_in_users_from_login_and_registration() {
+    if (is_user_logged_in() && !is_admin()) {
+        global $wp;
+        $current_url = home_url(add_query_arg(array(), $wp->request));
+        $account_page_url = wc_get_page_permalink('myaccount');
+        
+        if (strpos($current_url, '/login/') !== false || strpos($current_url, '/registration/') !== false) {
+            wp_redirect($account_page_url);
+            exit;
+        }
+    }
+}
+add_action('template_redirect', 'custom_redirect_logged_in_users_from_login_and_registration');
+
+
+
+function custom_handle_user_registration($customer_id) {
+    $user = get_userdata($customer_id);
+    $token = md5(uniqid($user->user_login, true)); // Generuj unikalny token
+    add_user_meta($customer_id, 'account_activation_token', $token); // Zapisz token w metadanych użytkownika
+
+    // Przygotuj i wyślij e-mail weryfikacyjny
+    $activation_link = add_query_arg(array('key' => $token, 'user' => $customer_id), get_permalink(get_option('woocommerce_myaccount_page_id')) . '?action=activate');
+    $to = $user->user_email;
+    $subject = 'Aktywuj swoje konto';
+    $body = 'Kliknij ten link, aby aktywować swoje konto: ' . $activation_link;
+    wp_mail($to, $subject, $body);
+
+    // Usuń automatyczne logowanie po rejestracji
+    remove_action('woocommerce_registration_redirect', 'wc_registration_redirect');
+}
+
+add_filter('woocommerce_registration_auth_new_customer', '__return_false');
+
+function custom_woocommerce_prevent_autologin_after_registration($redirect, $user) {
+    // Nie loguj automatycznie nowych użytkowników i nie przekierowuj ich na stronę 'Moje konto'
+    if (get_transient('custom_registration_attempted')) {
+        delete_transient('custom_registration_attempted');
+        // Zwróć URL do strony logowania z komunikatem
+        $redirect = add_query_arg('registered', 'yes', wc_get_page_permalink('myaccount'));
+    }
+    return $redirect;
+}
+add_filter('woocommerce_registration_redirect', 'custom_woocommerce_prevent_autologin_after_registration', 10, 2);
+
+function custom_woocommerce_show_message_after_registration() {
+    if (is_account_page() && isset($_GET['registered']) && 'yes' === $_GET['registered']) {
+        wc_add_notice(__('Dziękujemy za rejestrację! Sprawdź swój email, aby aktywować swoje konto.', 'woocommerce'), 'notice');
+    }
+}
+add_action('template_redirect', 'custom_woocommerce_show_message_after_registration');
+
+function custom_add_logged_in_class_body($classes) {
+    if (is_user_logged_in()) {
+        $classes[] = 'user-logged-in'; // Dodaj tę klasę, gdy użytkownik jest zalogowany
+    } else {
+        $classes[] = 'user-not-logged-in'; // Dodaj tę klasę, gdy użytkownik nie jest zalogowany
+    }
+    return $classes;
+}
+add_filter('body_class', 'custom_add_logged_in_class_body');
+
+
+function custom_add_user_info_to_menu($items, $args) {
+    $menu_location = 'primary'; // Może wymagać dostosowania
+
+    if (did_action('wp') && $args->theme_location == $menu_location) {
+        $current_user = wp_get_current_user();
+        if ($current_user->ID != 0) { // Użytkownik zalogowany
+            $user_email = $current_user->user_email;
+            $edit_account_url = "https://www.smart-copy.ai/moje-konto/edit-account/";
+
+            $user_info_item = '<li class="menu-item menu-user-info" style="order: -1;">';
+            $user_info_item .= '<a href="' . esc_url($edit_account_url) . '" style="color: #ffff;">' . esc_html($user_email) . '</a>';
+            $user_info_item .= '</li>'; 
+            $items = $user_info_item . $items;
+        }
+    }
+
+    return $items;
+}
+add_filter('wp_nav_menu_items', 'custom_add_user_info_to_menu', 10, 2);
+
+
+
+function display_last_invoice_summary() {
+    $user_id = get_current_user_id();
+    $args = array(
+        'author' => $user_id,
+        'post_type' => 'invoice', // Zmieniono na 'invoice', zakładając, że to jest typ postu dla faktur
+        'posts_per_page' => 2, // Zmieniono na 5, aby wyświetlić ostatnie 5 faktur
+        'orderby' => 'date',
+        'order' => 'DESC'
+    );
+
+    $invoices = new WP_Query($args);
+
+    if ($invoices->have_posts()) {
+        echo '<table style="width:100%;">';
+        echo '<tr><th>Data</th><th>Numer</th><th>Wartość</th><th>PDF</th></tr>';
+
+        while ($invoices->have_posts()) {
+            $invoices->the_post();
+            $invoice_id = get_the_ID();
+            $invoice_number = get_post_meta($invoice_id, 'invoice_number', true); // Załóżmy, że numer faktury jest przechowywany w meta polu 'invoice_number'
+            $invoice_value = get_post_meta($invoice_id, 'invoice_value', true); // Załóżmy, że wartość faktury jest przechowywana w meta polu 'invoice_value'
+            $invoice_pdf_url = get_post_meta($invoice_id, 'invoice_pdf_url', true); // Załóżmy, że URL do PDF faktury jest przechowywany w meta polu 'invoice_pdf_url'
+
+            echo '<tr>';
+            echo '<td>' . get_the_date('Y-m-d') . '</td>';
+            echo '<td>' . esc_html($invoice_number) . '</td>';
+            echo '<td>' . esc_html($invoice_value) . '</td>';
+            echo '<td><a href="' . esc_url($invoice_pdf_url) . '" target="_blank">Pobierz PDF</a></td>';
+            echo '</tr>';
+        }
+
+        echo '</table>';
+        wp_reset_postdata();
+    } else {
+        echo '<p>Nie masz jeszcze żadnych faktur.</p>';
+    }
+}
+
+
+function plural_form($number) {
+    $cases = [2, 0, 1, 1, 1, 2];
+    $titles = ['tekst', 'teksty', 'tekstów'];
+    $case = ($number % 100 > 4 && $number % 100 < 20) ? 2 : $cases[min($number % 10, 5)];
+    return $titles[$case];
+}
