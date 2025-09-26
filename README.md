@@ -70,13 +70,6 @@ SaaS platform for contactless copywriting orders
 ![LaTeX](https://img.shields.io/badge/-LaTeX-008080?style=flat-square&logo=latex&logoColor=white)
 ![Quarto](https://img.shields.io/badge/-Quarto-75AADB?style=flat-square&logo=quarto&logoColor=white)
 
-// ## 📊 GitHub Stats
-
-// <div align="center">
-  // <img src="https://github-readme-stats.vercel.app/api?username=LeszczynskiKarol&show_icons=true&theme=dark&hide_border=true&bg_color=0d1117&title_color=58a6ff&icon_color=58a6ff" alt="GitHub Stats" />
-// </div>
-
-
 ## 🎯 What I'm Up To
 
 - 🔭 Building AI-powered SaaS platforms
