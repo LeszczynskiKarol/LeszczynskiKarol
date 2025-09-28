@@ -25,7 +25,7 @@ const karol = {
 
 ### 🎓 **Smart-Edu.AI** 
 AI-powered platform for generating academic content
-`Next.js` `Node.js` `MongoDB` `OpenAI`
+`Next.js` `Node.js` `MongoDB` `Claude AI`
 
 ### 🏠 **GrandKuchnie.pl**
 Professional website for custom kitchen manufacturer
