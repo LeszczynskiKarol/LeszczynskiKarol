@@ -9,7 +9,7 @@
 
 ## 🚀 About Me
 
-Full-Stack Developer with **15+ years** in digital, transforming from a copywriter to a code craftsman. I build modern web applications, integrate AI solutions, and automate business processes.
+**15+ years** in digital, transforming from a copywriter to a code craftsman. I build modern web applications, integrate AI solutions, and automate business processes.
 
 ```javascript
 const karol = {
