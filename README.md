@@ -17,7 +17,7 @@ const karol = {
   currentFocus: "AI-powered SaaS platforms",
   experience: "15+ years",
   journey: "Copywriter → SEO Expert → WordPress Developer → Full-Stack Engineer",
-  passions: ["Clean Code", "AI Integration", "EdTech", "Publishing"]
+  passions: ["AI Integration", "EdTech", "Publishing"]
 };
 ```
 
