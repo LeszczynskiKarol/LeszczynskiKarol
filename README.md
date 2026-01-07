@@ -31,17 +31,16 @@ const karol = {
 
 **Frontend:** React · Next.js · Astro · TypeScript · Tailwind CSS  
 **Backend:** Node.js · Express · Python · PostgreSQL · MongoDB  
-**AI:** Claude AI (Anthropic) · OpenAI · LangChain  
-**Cloud:** AWS (EC2, S3, CloudFront, SES) · Vercel · Cloudflare  
-**Automation:** Make.com · Airtable · Zapier  
+**AI:** Claude AI (Anthropic)
+**Cloud:** AWS (EC2, S3, CloudFront, SES)
 **Publishing:** LaTeX · Quarto · Pandoc
 
 ## Publications
 
-**11 professional workbooks** for vocational schools (LaTeX/Quarto):
+**+20 professional workbooks** for vocational schools (LaTeX/Quarto):
 - Technik masażysta, Opiekun medyczny, Terapeuta zajęciowy
 - Technik BHP, Florysta, Higienistka stomatologiczna
-- And 5 more...
+- And more...
 
 ## Stats
 
