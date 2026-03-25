@@ -11,15 +11,10 @@
 
 **15+ years** in digital, transforming from a copywriter to a code craftsman. I build modern web applications, integrate AI solutions, and automate business processes.
 
-```javascript
-const karol = {
-  location: ["Toruń", "Bydgoszcz", "Poland"],
-  currentFocus: "AI-powered SaaS platforms",
-  experience: "15+ years",
-  journey: "Copywriter → SEO Expert → WordPress Developer → Full-Stack Engineer",
-  passions: ["AI Integration", "EdTech", "E-commerce", "Publishing"]
-};
-```
+// 15 lat temu pisałem teksty SEO za 5 zł/1000 znaków.
+// Teraz stawiam SaaS-y na AWS i kompiluję podręczniki w LaTeX-u.
+// Po drodze: WordPress → Node.js → React → Astro → "czemu to nie działa na produkcji?"
+// Baza: Toruń.
 
 ## 💼 Featured Projects
 
