@@ -9,12 +9,13 @@
 
 ## 🚀 About Me
 
-**15+ years** in digital, transforming from a copywriter to a code craftsman. I build modern web applications, integrate AI solutions, and automate business processes.
-
+Full-stack dev from Poland. I ship SaaS products, Astro sites, and LaTeX textbooks.
+```
 // 15 lat temu pisałem teksty SEO za 5 zł/1000 znaków.
 // Teraz stawiam SaaS-y na AWS i kompiluję podręczniki w LaTeX-u.
 // Po drodze: WordPress → Node.js → React → Astro → "czemu to nie działa na produkcji?"
-// Baza: Toruń.
+// Baza: Toruń. Stack: whatever ships.
+```
 
 ## 💼 Featured Projects
 
